@@ -1,5 +1,5 @@
 """
-Agente para PC Local - Versión final simplificada
+Agente para PC Local - Versión final corregida
 """
 import requests
 from flask import Flask, request, jsonify
@@ -9,13 +9,34 @@ import platform
 import serial
 import logging
 
-# Configurar logging simple sin problemas de encoding
+# Configurar logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # Leer configuración
 VPS_URL = "http://18.222.185.0:5000"
 AGENT_ID = f"agent-{platform.node()}-{int(time.time())}"
+
+# Variables globales para manejar importaciones
+WIN32_AVAILABLE = False
+win32print = None
+win32api = None
+
+# Función segura para importar win32print
+def safe_import_win32():
+    global WIN32_AVAILABLE, win32print, win32api
+    try:
+        import win32print
+        import win32api
+        WIN32_AVAILABLE = True
+        win32print = win32print
+        win32api = win32api
+        return True
+    except ImportError as e:
+        return False
+
+# Importar librerías seguras
+WIN32_AVAILABLE = safe_import_win32()
 
 # Agent Flask para PC local
 agent_app = Flask(__name__)
@@ -27,12 +48,11 @@ class LocalDeviceManager:
     
     def get_printers(self):
         """Obtener impresoras locales"""
-        printers = []
-        
-        if platform.system() == 'Windows':
-            try:
-                import win32print
-                logger.info("Escaneando impresoras locales...")
+        try:
+            printers = []
+            
+            if IS_WINDOWS and WIN32_AVAILABLE:
+                self.logger.info("Escaneando impresoras locales...")
                 printer_enum = win32print.EnumPrinters(win32print.PRINTER_ENUM_LOCAL)
                 for printer in printer_enum:
                     printer_info = {
@@ -41,83 +61,88 @@ class LocalDeviceManager:
                         'type': 'Local Windows'
                     }
                     printers.append(printer_info)
-                    logger.info(f"Impresora encontrada: {printer[2]}")
-                
-                logger.info(f"Total impresoras encontradas: {len(printers)}")
-            except ImportError:
-                logger.warning("win32print no disponible, usando simulación")
-                printers.append({'name': 'Demo Printer', 'status': 'Demo', 'type': 'Simulación'})
-            except Exception as e:
-                logger.error(f"Error escaneando impresoras: {e}")
-                return [{'name': 'Demo Printer', 'status': 'Demo', 'type': 'Simulación'}]
-        else:
-            printers.append({'name': 'Demo Printer', 'status': 'Demo', 'type': 'Simulación'})
-        
-        return printers
+                    self.logger.info(f"Impresora encontrada: {printer[2]}")
+            
+            self.logger.info(f"Total impresoras encontradas: {len(printers)}")
+            return printers
+            
+        except Exception as e:
+            self.logger.error(f"Error escaneando impresoras: {e}")
+            return [{'name': 'Demo Printer', 'status': 'Demo', 'type': 'Simulación'}]
     
     def print_ticket(self, printer_name, content):
         """Imprimir ticket localmente - versión final"""
-        logger.info(f"Iniciando impresion en: {printer_name}")
-        
-        if platform.system() == 'Windows':
-            try:
-                import win32print
-                import win32api
-                
+        try:
+            self.logger.info(f"Iniciando impresion en: {printer_name}")
+            
+            if IS_WINDOWS and WIN32_AVAILABLE:
+                # Usar método directo con win32print
                 ticket_content = self._format_ticket(content)
-                logger.info(f"Contenido generado ({len(ticket_content)} caracteres)")
+                self.logger.info(f"Contenido generado ({len(ticket_content)} caracteres)")
                 
-                # Intentar impresión real
                 try:
-                    logger.info(f"Abriendo impresora: {printer_name}")
+                    self.logger.info(f"Abriendo impresora: {printer_name}")
                     hPrinter = win32print.OpenPrinter(printer_name)
                     
+                    self.logger.info("Iniciando documento RAW")
                     doc_info = ("Ticket", "RAW", "RAW")
                     win32print.StartDocPrinter(hPrinter, 1, doc_info)
+                    
+                    self.logger.info("Iniciando pagina")
                     win32print.StartPagePrinter(hPrinter)
                     
+                    self.logger.info("Enviando a impresora")
                     data = ticket_content.encode('utf-8')
                     win32print.WritePrinter(hPrinter, data)
                     
+                    self.logger.info("Finalizando pagina")
                     win32print.EndPagePrinter(hPrinter)
+                    
+                    self.logger.info("Finalizando documento")
                     win32print.EndDocPrinter(hPrinter)
+                    
+                    self.logger.info("Cerrando impresora")
                     win32print.ClosePrinter(hPrinter)
                     
-                    logger.info("IMPRESION REAL COMPLETADA EXITOSAMENTE!")
+                    self.logger.info("IMPRESION REAL COMPLETADA EXITOSAMENTE!")
                     return {'status': 'success', 'printer': printer_name, 'method': 'real_print'}
                     
-                except Exception as e:
-                    logger.error(f"Error en impresión real: {e}")
-                    return {'status': 'error', 'printer': printer_name, 'error': str(e)}
-            except ImportError:
-                logger.warning("win32print no disponible, usando simulación")
+                except Exception as print_error:
+                    self.logger.error(f"Error en impresion real: {print_error}")
+                    return {'status': 'error', 'printer': printer_name, 'error': str(print_error)}
+                    
+            else:
+                self.logger.warning("win32print no disponible, usando simulación")
                 return {'status': 'simulated', 'printer': printer_name}
-        else:
-            return {'status': 'simulated', 'printer': printer_name}
+                
+        except Exception as e:
+            self.logger.error(f"Error general imprimiendo: {e}")
+            return {'status': 'error', 'printer': printer_name, 'error': str(e)}
     
     def scan_scales(self):
         """Escanear básculas locales"""
         scales = []
-        if platform.system() == 'Windows':
+        if IS_WINDOWS:
+            self.logger.info("Escaneando puertos COM para básculas...")
             for i in range(1, 10):
                 port_name = f'COM{i}'
                 try:
                     ser = serial.Serial(port_name, timeout=1)
                     ser.close()
                     scales.append({'port': port_name, 'status': 'Disponible'})
-                    logger.info(f"Puerto disponible: {port_name}")
+                    self.logger.info(f"Puerto disponible: {port_name}")
                 except:
                     continue
         
-        logger.info(f"Total básculas encontradas: {len(scales)}")
+        self.logger.info(f"Total básculas encontradas: {len(scales)}")
         return scales
     
     def read_scale(self, port):
         """Leer báscula local"""
         try:
-            logger.info(f"Leyendo báscula en puerto: {port}")
+            self.logger.info(f"Leyendo báscula en puerto: {port}")
             
-            if platform.system() == 'Windows':
+            if IS_WINDOWS:
                 ser = serial.Serial(port, 9600, timeout=2)
                 time.sleep(0.5)
                 ser.write(b'P\r\n')
@@ -125,19 +150,19 @@ class LocalDeviceManager:
                 response = ser.readline().decode('utf-8').strip()
                 ser.close()
                 
-                logger.info(f"Respuesta báscula: {response}")
+                self.logger.info(f"Respuesta báscula: {response}")
                 
                 if ',' in response:
                     parts = response.split(',')
                     if len(parts) >= 3:
                         weight = float(parts[2].strip().split()[0])
-                        logger.info(f"Peso leido: {weight} kg")
+                        self.logger.info(f"Peso leído: {weight} kg")
                         return {'port': port, 'weight': weight, 'unit': 'kg'}
             
             return {'port': port, 'weight': 1.23, 'unit': 'kg', 'simulated': True}
             
         except Exception as e:
-            logger.error(f"Error leyendo báscula: {e}")
+            self.logger.error(f"Error leyendo báscula: {e}")
             return {'port': port, 'error': str(e)}
     
     def _format_ticket(self, content):
@@ -169,8 +194,8 @@ def agent_index():
     return jsonify({
         'agent_id': AGENT_ID,
         'status': 'running',
-        'platform': platform.system()
-        'win32_available': platform.system() == 'Windows'
+        'platform': platform.system(),
+        'win32_available': WIN32_AVAILABLE
     })
 
 @agent_app.route('/devices/printers', methods=['GET'])
@@ -188,7 +213,7 @@ def agent_print():
     printer_name = data.get('printer_name')
     content = data.get('content')
     
-    logger.info(f"Petición de impresión recibida para: {printer_name}")
+    device_manager.log_action(f"Petición de impresión recibida para: {printer_name}")
     result = device_manager.print_ticket(printer_name, content)
     
     # Notificar al VPS que se imprimió
@@ -198,7 +223,7 @@ def agent_print():
             'result': result
         }, timeout=5)
     except Exception as e:
-        logger.error(f"Error notificando VPS: {e}")
+        device_manager.log_action(f"Error notificando VPS: {e}")
     
     return jsonify({
         'success': True,
@@ -245,7 +270,7 @@ def register_with_vps():
                 'printers': device_manager.get_printers(),
                 'scales': device_manager.scan_scales(),
                 'timestamp': time.time(),
-                'win32_available': platform.system() == 'Windows'
+                'win32_available': WIN32_AVAILABLE
             }
             
             response = requests.post(
@@ -269,6 +294,7 @@ if __name__ == '__main__':
     print(f"Agent ID: {AGENT_ID}")
     print(f"VPS URL: {VPS_URL}")
     print(f"Sistema: {platform.system()}")
+    print(f"win32print disponible: {WIN32_AVAILABLE}")
     print("=" * 60)
     print("Este agente expone tus dispositivos locales al VPS")
     
@@ -277,5 +303,4 @@ if __name__ == '__main__':
     register_thread.start()
     
     # Iniciar servidor del agente
-    logger.info("Iniciando servidor Flask en puerto 5001...")
     agent_app.run(host='0.0.0.0', port=5001, debug=False)
