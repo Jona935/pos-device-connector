@@ -11,11 +11,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean
 
 # Copiar requirements minimal
-COPY requirements.minimal.txt requirements.txt
+COPY requirements.minimal.txt ./
 
 # Instalar dependencias Python limpiando cache
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir -r requirements.minimal.txt
 
 # Copiar solo lo necesario
 COPY app.py device_manager.py cloud_client.py ./
