@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  pos-device-connector:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+    volumes:
+      - .:/app
+    restart: unless-stopped
+    network_mode: host  # Importante para acceder a dispositivos locales
+
+  # Simulador de POS en la nube para pruebas
+  pos-cloud-simulator:
+    build: .
+    ports:
+      - "5001:5000"
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+      - SIMULATOR_MODE=true
+    volumes:
+      - .:/app
+    restart: unless-stopped
+    command: python simulator.py
