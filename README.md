@@ -1,114 +1,62 @@
-# POS Device Connector
+# POS Device Connector - Organizado
 
-Herramienta para conectar dispositivos locales (impresoras, básculas) con sistema POS en la nube.
+## 📁 Estructura Clara
 
-## Características
+```
+pos-device-connector/
+├── 🖥️ app_ultralight.py          # API del servidor VPS
+├── 🖥️ Dockerfile.ultralight         # Imagen Docker para VPS
+├── 🖥️ requirements.minimal.txt       # Dependencias VPS
+├── 🖥️ deploy_vps.sh                # Script despliegue VPS
+├── 💻 local_agent_simple.py         # Agente PC Local
+├── 💻 install_agent.py              # Instalador PC
+├── 💻 installer.bat                 # Instalador batch
+├── 💻 start_agent.bat              # Script inicio PC
+├── 💻 agent_config.json             # Configuración agente
+├── 💻 requirements.txt               # Dependencias PC
+├── 📚 shared/                      # Documentación
+├── 📚 docs/                         # Documentos técnicos
+└── 📦 old/                          # Archivos antiguos
+```
 
-- Detección automática de impresoras locales
-- Comunicación con básculas por puerto serial
-- API REST para integración con POS en la nube
-- Soporte para Docker y Docker Compose
-- Simulador de POS en la nube para pruebas
+## 🚀 Uso Rápido
 
-## Instalación
-
-### Local (Windows)
-
+### **VPS (Ubuntu)**:
 ```bash
-# Instalar dependencias
-pip install -r requirements.txt
-
-# Ejecutar servidor
-python app.py
+# Desplegar API
+chmod +x deploy_vps.sh
+./deploy_vps.sh
 ```
 
-### Docker
-
+### **PC Local (Windows)**:
 ```bash
-# Construir y ejecutar con Docker Compose
-docker-compose up --build
+# Instalar y ejecutar agente
+python install_agent.py
+python start_agent.bat
 ```
 
-## API Endpoints
-
-### Dispositivos Locales
-
-- `GET /devices/printers` - Listar impresoras disponibles
-- `GET /devices/scales` - Listar básculas disponibles
-- `POST /print` - Imprimir ticket
-- `POST /scale/read` - Leer peso de báscula
-
-### Conexión con Nube
-
-- `POST /cloud/connect` - Conectar con POS en la nube
-
-## Ejemplo de Uso
-
-### Conectar con POS en la nube
-
-```bash
-curl -X POST http://localhost:5000/cloud/connect \
-  -H "Content-Type: application/json" \
-  -d '{
-    "cloud_url": "http://localhost:5001",
-    "api_key": "test-api-key"
-  }'
-```
-
-### Imprimir ticket
-
-```bash
-curl -X POST http://localhost:5000/print \
-  -H "Content-Type: application/json" \
-  -d '{
-    "printer_name": "Microsoft Print to PDF",
-    "content": {
-      "items": [
-        {"name": "Producto 1", "price": 10.50, "qty": 2},
-        {"name": "Producto 2", "price": 5.25, "qty": 1}
-      ],
-      "total": 26.25
-    }
-  }'
-```
-
-### Leer báscula
-
-```bash
-curl -X POST http://localhost:5000/scale/read \
-  -H "Content-Type: application/json" \
-  -d '{
-    "scale_port": "COM1"
-  }'
-```
-
-## Arquitectura
+## 🌐 Conexión
 
 ```
-┌─────────────────┐    API REST    ┌──────────────────┐
-│   Dispositivos  │◄──────────────►│  POS en Nube     │
-│   Locales       │                │  (Flask)         │
-└─────────────────┘                └──────────────────┘
-         ▲                                   ▲
-         │                                   │
-         ▼                                   ▼
-┌─────────────────┐                ┌──────────────────┐
-│ Device Manager  │                │  Cloud Client    │
-│ (Windows API)   │                │  (HTTP Requests) │
-└─────────────────┘                └──────────────────┘
+PC Local (Agent)  ←→  VPS (Server)  ←→  POS Nube
+  :5001               :5000           :8000
 ```
 
-## Despliegue con Dockploy
+## 📋 Archivos por Sistema
 
-1. Subir código a repositorio Git
-2. Conectar repositorio en Dockploy
-3. Configurar variables de entorno:
-   - `CLOUD_URL`: URL del POS en la nube
-   - `API_KEY`: Clave de API
-4. Desplegar
+| Sistema | Archivos Clave | Función |
+|---------|----------------|----------|
+| VPS | app_ultralight.py | API REST |
+| PC | local_agent_simple.py | Control dispositivos |
+| Ambos | agent_config.json | Configuración |
+| Documentación | README.md | Guía completa |
 
-## Notas
+## 🎯 Flujo Trabajo
 
-- En Windows, requiere pywin32 para acceso a impresoras
-- Para básculas, configurar puerto COM correcto
-- El simulador en el puerto 5001 emula el POS en la nube
+1. **VPS**: Inicia API en puerto 5000
+2. **PC**: Inicia agente en puerto 5001
+3. **Registro**: Agente se registra cada 30s
+4. **Control**: POS nube → VPS → Agente → Dispositivos
+5. **Respuesta**: Dispositivos → Agente → VPS → POS nube
+
+¡Sistema POS Device Connector completo y organizado! 🚀
