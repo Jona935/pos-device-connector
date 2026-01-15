@@ -1,0 +1,17 @@
+# Dockerfile ultraligero para VPS con espacio crítico
+FROM python:3.11-slim
+
+# Establecer directorio de trabajo
+WORKDIR /app
+
+# Instalar solo Flask (sin actualizar pip para ahorrar espacio)
+RUN pip install flask requests --no-cache-dir
+
+# Copiar solo los archivos esenciales
+COPY app_ultralight.py ./
+
+# Exponer puerto
+EXPOSE 5000
+
+# Comando de inicio
+CMD ["python", "-u", "app.py"]
