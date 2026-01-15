@@ -94,15 +94,14 @@ class AgentInstaller:
         """Crear script de inicio"""
         print("\n🚀 [4/6] Creando script de inicio...")
         
-        script_content = f'''@echo off
+        script_content = f"""@echo off
 title Agente Local POS Device Connector
 color 0B
 
-echo ╔══════════════════════════════════════════════════════════════╗
-echo ║          AGENTE LOCAL POS DEVICE CONNECTOR                      ║
-echo ║                                                              ║
-echo ║  Conectando dispositivos locales con POS en la nube...           ║
-echo ╚══════════════════════════════════════════════════════════════╝
+echo ================================================================
+echo                AGENTE LOCAL POS DEVICE CONNECTOR
+echo                Conectando dispositivos locales con POS en la nube
+echo ================================================================
 echo.
 echo URL VPS: {self.vps_url}
 echo Puerto Agente: 5001
@@ -110,7 +109,7 @@ echo.
 echo Iniciando agente...
 python local_agent.py
 pause
-'''
+"""
         
         with open('start_agent.bat', 'w') as f:
             f.write(script_content)
