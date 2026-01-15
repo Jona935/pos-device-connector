@@ -63,32 +63,55 @@ class LocalDeviceManager:
             return [{'name': 'Demo Printer', 'status': 'Demo', 'type': 'Simulación'}]
     
     def print_ticket(self, printer_name, content):
-        """Imprimir ticket localmente - método simple"""
+        """Imprimir ticket localmente - método real"""
         try:
-            logger.info(f"Intentando imprimir en: {printer_name}")
+            logger.info(f"🖨️ Imprimiendo ticket real en: {printer_name}")
             
             if IS_WINDOWS:
                 # Usar método directo con win32print
                 ticket_content = self._format_ticket(content)
-                logger.info("Contenido del ticket generado")
+                logger.info("✅ Contenido del ticket generado")
+                logger.info(f"📄 Longitud del ticket: {len(ticket_content)} caracteres")
                 
-                # Simulación por ahora (puedes activar impresión real descomentando)
-                """
-                hPrinter = win32print.OpenPrinter(printer_name)
-                win32print.StartDocPrinter(hPrinter, 1, ("Ticket", "RAW", "RAW"))
-                win32print.StartPagePrinter(hPrinter)
-                win32print.WritePrinter(hPrinter, ticket_content.encode('utf-8'))
-                win32print.EndPagePrinter(hPrinter)
-                win32print.EndDocPrinter(hPrinter)
-                win32print.ClosePrinter(hPrinter)
-                """
+                # Activar impresión real
+                try:
+                    import win32print
+                    import win32api
+                    
+                    logger.info(f"🔧 Abriendo impresora: {printer_name}")
+                    hPrinter = win32print.OpenPrinter(printer_name)
+                    
+                    logger.info("📋 Iniciando documento de impresión")
+                    win32print.StartDocPrinter(hPrinter, 1, ("Ticket", None, "RAW"))
+                    
+                    logger.info("📄 Iniciando página")
+                    win32print.StartPagePrinter(hPrinter)
+                    
+                    logger.info("🖨️ Enviando contenido a impresora")
+                    win32print.WritePrinter(hPrinter, ticket_content.encode('utf-8'))
+                    
+                    logger.info("✅ Finalizando página")
+                    win32print.EndPagePrinter(hPrinter)
+                    
+                    logger.info("📋 Finalizando documento")
+                    win32print.EndDocPrinter(hPrinter)
+                    
+                    logger.info("🔒 Cerrando impresora")
+                    win32print.ClosePrinter(hPrinter)
+                    
+                    logger.info("🎉 ¡Impresión completada exitosamente!")
+                    return {'status': 'success', 'printer': printer_name, 'method': 'real_print'}
+                    
+                except Exception as print_error:
+                    logger.error(f"❌ Error en impresión real: {print_error}")
+                    return {'status': 'error', 'printer': printer_name, 'error': str(print_error)}
                 
-                return {'status': 'success', 'printer': printer_name, 'method': 'simulation'}
             else:
+                logger.info("🖥️ Sistema no-Windows, usando simulación")
                 return {'status': 'simulated', 'printer': printer_name}
                 
         except Exception as e:
-            logger.error(f"Error imprimiendo: {e}")
+            logger.error(f"❌ Error general imprimiendo: {e}")
             return {'status': 'error', 'error': str(e)}
     
     def scan_scales(self):
