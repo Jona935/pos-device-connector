@@ -15,8 +15,15 @@ IS_WINDOWS = platform.system() == 'Windows'
 
 if IS_WINDOWS:
     import win32print
-    from escpos.printer import Win32Printer
-    ESCPOS_AVAILABLE = True
+    try:
+        from escpos.printer import Win32RawPrinter
+        ESCPOS_AVAILABLE = True
+    except ImportError:
+        try:
+            from escpos.printer import Win32Printer
+            ESCPOS_AVAILABLE = True
+        except ImportError:
+            ESCPOS_AVAILABLE = False
 else:
     ESCPOS_AVAILABLE = False
 
@@ -60,14 +67,40 @@ class LocalDeviceManager:
         """Imprimir ticket localmente"""
         try:
             if IS_WINDOWS and ESCPOS_AVAILABLE:
-                printer = Win32Printer(printer_name)
+                # Intentar con Win32RawPrinter primero
+                try:
+                    from escpos.printer import Win32RawPrinter
+                    printer = Win32RawPrinter(printer_name)
+                except:
+                    from escpos.printer import Win32Printer
+                    printer = Win32Printer(printer_name)
+                
                 ticket_content = self._format_ticket(content)
                 printer.text(ticket_content)
                 printer.cut()
                 return {'status': 'success', 'printer': printer_name}
             else:
-                # Simulación
+                # Simulación o método alternativo
                 logger.info(f"[SIMULACIÓN] Imprimiendo en {printer_name}")
+                
+                # Método alternativo con win32print directo
+                if IS_WINDOWS:
+                    try:
+                        import win32print
+                        import win32api
+                        
+                        hPrinter = win32print.OpenPrinter(printer_name)
+                        ticket_content = self._format_ticket(content)
+                        win32print.StartDocPrinter(hPrinter, 1, ("Ticket", None, "RAW"))
+                        win32print.StartPagePrinter(hPrinter)
+                        win32print.WritePrinter(hPrinter, ticket_content.encode('utf-8'))
+                        win32print.EndPagePrinter(hPrinter)
+                        win32print.EndDocPrinter(hPrinter)
+                        win32print.ClosePrinter(hPrinter)
+                        return {'status': 'success', 'printer': printer_name}
+                    except:
+                        pass
+                
                 return {'status': 'simulated', 'printer': printer_name}
         except Exception as e:
             logger.error(f"Error imprimiendo: {e}")
