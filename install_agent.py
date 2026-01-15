@@ -107,7 +107,7 @@ echo URL VPS: {self.vps_url}
 echo Puerto Agente: 5001
 echo.
 echo Iniciando agente...
-python local_agent.py
+python local_agent_simple.py
 pause
 """
         
